@@ -3,20 +3,25 @@
 #include <ctime>
 #include <cstdlib>
 #include "solution.hpp"
+#include <unordered_map>
+#include <string>
 
 class GA
 {
 private:
     std::shared_ptr<std::vector<solution>> _population;
+    std::unordered_map<std::string, float> _parameters;
     float (*_evalSolution)(solution);
     solution (*_getRandomSolution)();
 public:
     GA(float (*evalSolution)(solution),
-       solution (*getRandomSolution)())
+       solution (*getRandomSolution)(),
+       std::unordered_map<std::string, float> parameters)
     {
         std::srand(std::time(NULL)); // seed the random number generator using current time
         _evalSolution = evalSolution;
         _getRandomSolution = getRandomSolution;
+        _parameters = parameters;
     };
 
     void generateInitialPopulation();
@@ -29,7 +34,5 @@ public:
 
     void updatePopulation(); // using curr and new population
 
-    void optimise();
-
-    void optimise(std::shared_ptr<std::vector<solution>> initial_population); // overload for provided initial population
+    void optimise(int max_iterations, int terminateEvalValue, std::shared_ptr<std::vector<solution>> population);
 };
