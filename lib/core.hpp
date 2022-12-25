@@ -5,12 +5,20 @@
 #include "solution.hpp"
 #include <unordered_map>
 #include <string>
+#include <iostream>
+
+struct GA_policy
+{
+    int numParents;
+    int numPopulationReplaced;
+};
 
 class GA
 {
 private:
-    std::shared_ptr<std::vector<solution>> _population;
+    std::vector<solution> _population;
     std::unordered_map<std::string, float> _parameters;
+    GA_policy _policy; // tracks current algorithm state
     float (*_evalSolution)(solution);
     solution (*_getRandomSolution)();
 public:
@@ -22,17 +30,23 @@ public:
         _evalSolution = evalSolution;
         _getRandomSolution = getRandomSolution;
         _parameters = parameters;
+        _policy = {
+            static_cast<int>(_parameters["initialParentCount"]),
+            static_cast<int>(_parameters["initialPopulationReplaced"])
+        };
     };
 
     void generateInitialPopulation();
 
     void evalPopulation(std::shared_ptr<std::vector<solution>> population);
 
-    void getParents();
+    std::vector<int> getParents(int numParents); // get index of parents in curr population
 
-    void getNewPopulation(); // breed and mutate
+    std::vector<solution> getNewPopulation(int numNewPopulation); // breed and mutate
 
-    void updatePopulation(); // using curr and new population
+    void updatePopulation(std::vector<solution> newPopulation); // using curr and new population
 
-    void optimise(int max_iterations, int terminateEvalValue, std::shared_ptr<std::vector<solution>> population);
+    bool terminateSearch(); // determine whether search should terminate
+
+    void optimise();
 };

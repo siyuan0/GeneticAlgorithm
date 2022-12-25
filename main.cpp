@@ -15,10 +15,8 @@ int main(int argc,
         std::ifstream f(argv[1]);
         nlohmann::json data = nlohmann::json::parse(f);
         auto jmap = data.get<std::unordered_map<std::string, float>>();
-        for(auto p : jmap)
-        {
-            std::cout << p.first << ':' << p.second << '\n';
-        }
+        GA GAinst(nullptr, nullptr, jmap);
+        GAinst.optimise();
     }else
     {
         std::cout << "too many arguments\n";

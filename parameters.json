@@ -1,4 +1,8 @@
 {
     "max_iterations": 10000.0,
-    "test": 19.19
+    "population size": 100,
+    "max xi": 500,
+    "min xi": -500,
+    "initialParentCount": 30,
+    "initialPopulationReplaced": 30
 }
