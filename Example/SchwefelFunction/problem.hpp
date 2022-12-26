@@ -9,6 +9,8 @@
 #include <vector>
 #include <unordered_map>
 #include <string>
+#include <algorithm>
+#include <utility>
 
 #define DIMENSION 2 // to change this define for other dimensions
 
@@ -60,8 +62,44 @@ std::vector<soln> getInitialPopulation(int size, std::unordered_map<std::string,
     return v;
 }
 
+std::vector<int> getParentIdx(std::vector<soln>& population, int rangeStart, int rangeEnd, 
+                              std::unordered_map<std::string, float> parameters)
+{  /* parents chosen by ranking selection
+      p(selected)=(S*(N+1-2*R_i) + 2*(R_i-1))/(N*(N-1)) 
+      where S = selection pressure, N is size of population considered,
+      R_i is the solution rank */ 
+    
+    // get the rank of each solution
+    float N = rangeEnd - rangeStart;
+    std::vector<std::pair<float, int>> sortingArr;
+    for(int i=rangeStart; i<rangeEnd; i++) sortingArr.push_back(std::pair<float, int>(population[i].getEval(), i));
+    struct {
+        bool operator()(std::pair<float, int> s1, std::pair<float, int> s2) const {return s1.first < s2.first;}
+    } compareFunc;
+    std::sort(sortingArr.begin(), sortingArr.end(), compareFunc);
+
+    // probabilistically choose parents
+    std::vector<int> chosenParents;
+    for(int i=0; i<sortingArr.size(); i++)
+    {
+        float rank = i+1;
+        float acceptCriteria = 
+            (parameters["selection pressure"] * (N + 1 - 2 * rank) + 2 * (rank-1)) /
+            (N * (N-1));
+        if(std::rand() < RAND_MAX * acceptCriteria) chosenParents.push_back(sortingArr[i].second);
+    }
+
+    RESERVECOUT
+    LOG("chosen parents: \n")
+    for(int i=0; i<chosenParents.size(); i++) LOG( '\t' << population[chosenParents[i]] << '\n')
+    UNRESERVECOUT
+    
+    return chosenParents;
+}
+
 static ProblemCtx<soln> problemCtx = {
-    .getRandomSolutions = &getInitialPopulation
+    .getRandomSolutions = &getInitialPopulation,
+    .getParentIdx = &getParentIdx
 };
 
 } // namespace Schwefel

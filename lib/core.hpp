@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <thread>
 #include "utils.hpp"
+#include <algorithm>
 
 static int unique_id = 0;
 
@@ -22,6 +23,7 @@ template <typename T>
 struct ProblemCtx
 {   // problem specific methods
     std::vector<T> (*getRandomSolutions)(int, std::unordered_map<std::string, float>);
+    std::vector<int> (*getParentIdx)(std::vector<T>&, int, int, std::unordered_map<std::string, float>);
 };
 
 struct GA_policy
@@ -35,9 +37,11 @@ class GA
 {
 private:
     std::vector<T> _population;
+    std::timed_mutex _populationGuard; // to ensure thread-safe modifications to population
     std::unordered_map<std::string, float> _parameters;
     GA_policy _policy; // tracks current algorithm state
     ProblemCtx<T> _problemCtx;
+    // T _bestSolution;
 
 public:
     GA(ProblemCtx<T> problemCtx,
@@ -59,54 +63,48 @@ public:
 
     void generateInitialPopulation()
     {
-        std::cout << "generateInitialPopulation: unimplemented\n";
+        std::cout << "\tgenerateInitialPopulation: unimplemented\n";
         _population.clear();
         _population = _problemCtx.getRandomSolutions(_parameters["population size"], _parameters);
     }
 
-
-    void evalPopulation(std::shared_ptr<std::vector<T>> population)
+    std::vector<int> getParents(int rangeStart, int rangeEnd)
     {
-        std::cout << "evalPopulation: unimplemented\n";
-    }
-
-    std::vector<int> getParents(int numParents, int rangeStart, int rangeEnd)
-    {
-        std::cout << "getParents: " << numParents << " unimplemented\n";
-        std::vector<int> nilreturn;
+        std::vector<int> nilreturn = _problemCtx.getParentIdx(_population, rangeStart, rangeEnd, _parameters);
         return nilreturn;
     }
 
     std::vector<T> getNewPopulation(int numNewPopulation)
     {
-        std::cout << "getNewPopulation: unimplemented\n";
+        THREADPRINT("\tgetNewPopulation: unimplemented\n")
         std::vector<T> nilreturn;
         return nilreturn;
     }
 
     void updatePopulation(std::vector<T> newPopulation)
     {
-        std::cout << "updatePopulation: unimplemented\n";
+        THREADPRINT("\tupdatePopulation: unimplemented\n")
     }
 
     bool terminateSearch()
     {
-        std::cout << "terminateSearch: unimplemented\n";
+        THREADPRINT("\tterminateSearch: unimplemented\n")
         return true;
     }
 
     void optimiseThread(int maxIter, int rangeStart, int rangeEnd, GA_policy* policy)
-    {   // perform optimisation on a subset of population
+    {   // perform GA search on a subset of population
         // ie. _population[rangeStart:rangeEnd]
         int threadID = generateThreadID();
-        THREADPRINT("thread " << threadID << " started\n")
+        THREADPRINT("thread " << threadID << " started handling " << rangeEnd-rangeStart << " solutions\n")
         int iter = 0;
+
         while(iter < maxIter)
         {
             iter += 1;
 
-            // perform population search
-            std::vector<int> parentIdx = getParents(policy->numParents, rangeStart, rangeEnd);
+            // perform GA search
+            std::vector<int> parentIdx = getParents(rangeStart, rangeEnd);
             std::vector<T> newPopulation = getNewPopulation(policy->numPopulationReplaced);
             updatePopulation(newPopulation);
             if(terminateSearch()) break;
@@ -119,14 +117,15 @@ public:
         generateInitialPopulation();
         std::vector<std::thread> threadList;
         std::cout << "number of available processors = " << std::thread::hardware_concurrency() << '\n';
+        int populationPerThread = _population.size() / _parameters["number of Threads"] + 1;
         for(int i=0; i<_parameters["number of Threads"]; i++)
         {
             threadList.push_back(std::thread(
                         &GA<T>::optimiseThread, 
                         this,
                          _parameters["max_iterations"], 
-                         0, 
-                         _population.size(), 
+                         i * populationPerThread, 
+                         std::min<int>((i+1) * populationPerThread, _population.size()), 
                          &_policy)); // starts a thread
         }
         
