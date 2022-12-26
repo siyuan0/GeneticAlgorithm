@@ -4,5 +4,6 @@
     "max xi": 500,
     "min xi": -500,
     "initialParentCount": 30,
-    "initialPopulationReplaced": 30
+    "initialPopulationReplaced": 30,
+    "number of Threads": 8
 }
