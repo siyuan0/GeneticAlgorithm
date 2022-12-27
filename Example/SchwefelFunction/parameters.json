@@ -6,5 +6,6 @@
     "initialParentCount": 30,
     "initialPopulationReplaced": 30,
     "number of Threads": 3,
-    "selection pressure": 10
+    "selection pressure": 10,
+    "Breeding Variance Scale": 0.5
 }

@@ -5,9 +5,12 @@
 #include <iostream>
 #include <mutex>
 #include <chrono>
+#include <random>
 
 std::timed_mutex coutGuard; // use for thread-safe cout
 const std::chrono::duration<double, std::milli> default_timeout(1); // default timeout for waiting for cout lock
+std::random_device rd{};
+std::mt19937 gen{rd()};
 
 #define CONCAT2(a, b) a ## b
 
@@ -25,5 +28,24 @@ const std::chrono::duration<double, std::milli> default_timeout(1); // default t
 #define RESERVECOUT coutGuard.try_lock_for(default_timeout);
 
 #define UNRESERVECOUT coutGuard.unlock();
+
+struct randNormal
+{
+    float _mean;
+    float _stddev;
+    std::normal_distribution<> _dist;
+
+    randNormal(float mean, float stddev)
+    {
+        _mean = mean;
+        _stddev = stddev;
+        _dist = std::normal_distribution<>{mean, stddev};
+    }
+
+    float rand()
+    {
+       return  _dist(gen);
+    }
+};
 
 #endif // INCLUDE_UTILS

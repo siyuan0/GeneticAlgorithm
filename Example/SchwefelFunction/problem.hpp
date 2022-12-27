@@ -3,6 +3,7 @@
 
 #include "../../lib/solution.hpp"
 #include "../../lib/core.hpp"
+#include "../../lib/utils.hpp"
 #include <cstdlib>
 #include <ostream>
 #include <cmath>
@@ -11,6 +12,7 @@
 #include <string>
 #include <algorithm>
 #include <utility>
+#include <limits>
 
 #define DIMENSION 2 // to change this define for other dimensions
 
@@ -23,25 +25,34 @@ class soln : public solution
 private:
     float x[DIMENSION]; // using array instead of vector to have it stored on stack for faster creation/access/deletion
     float f;
+    float _lbound;
+    float _ubound;
 
     float evaluateObjective()
     { // evaluate Schwefel's function on this solution
         float tmp = 0;
-        for(int i=0; i<DIMENSION; i++) tmp -= x[i] * std::sin(std::sqrt(std::fabs(x[i])));
+        for(int i=0; i<DIMENSION; i++) 
+        {
+            if(x[i] < _lbound | x[i] > _ubound) return std::numeric_limits<float>::max(); // solution is outside constraints
+            tmp -= x[i] * std::sin(std::sqrt(std::fabs(x[i])));
+        }
         return tmp;
     }
 
 public:
     soln(float lowerbound, float upperbound)
     {  // randomly generate a solution within the provided bounds
+        _lbound = lowerbound;
+        _ubound = upperbound;
         for(int i=0; i<DIMENSION; i++) x[i] = lowerbound +  float(std::rand()) / RAND_MAX * (upperbound-lowerbound);
         f = evaluateObjective();
     }
 
-    float getEval()
-    {
-        return f;
-    }
+    float getEval(){ return f; }
+
+    float getX(int i){ return x[i]; }
+
+    void setX(int i, float val){ x[i]=val; }
 
     friend std::ostream& operator<< (std::ostream& stream, const soln& s)
     {   // for printing out the contents of a solution
@@ -51,6 +62,13 @@ public:
         return stream;
     }
 };
+
+float l2(soln& s1, soln& s2)
+{  // get the l2 norm of s1-s2
+    float sum = 0; 
+    for(int i=0; i<DIMENSION; i++) sum += std::pow(s1.getX(i) - s2.getX(i), 2);
+    return std::pow(sum, 0.5);
+}
 
 std::vector<soln> getInitialPopulation(int size, std::unordered_map<std::string, float>& parameters)
 {
@@ -90,8 +108,8 @@ std::vector<int> getParentIdx(std::vector<soln>& population, int rangeStart, int
     }
 
     RESERVECOUT
-    LOG("chosen parents: \n")
-    for(int i=0; i<chosenParents.size(); i++) LOG( '\t' << population[chosenParents[i]] << '\n')
+        LOG("chosen parents: \n")
+        for(int i=0; i<chosenParents.size(); i++) LOG( '\t' << population[chosenParents[i]] << '\n')
     UNRESERVECOUT
     
     return chosenParents;
@@ -99,8 +117,25 @@ std::vector<int> getParentIdx(std::vector<soln>& population, int rangeStart, int
 
 std::vector<soln> getChildren(std::vector<soln>& population, std::vector<int>& parentIdx, 
                               std::unordered_map<std::string, float>& parameters)
-{
+{   // each parent will randomly pair with another parent and undergo crossover
+    // to produce children, ie. draw X~N(parent1, (Breeding_Variance_Scale)*||parent1-parent2||_2))
+    std::vector<soln> children;
+    if(parentIdx.size() < 2) return children; // no children produced
 
+    for(int i=0; i<parentIdx.size(); i++)
+    {
+        int otherParentIdx = i;
+        while(otherParentIdx == i) otherParentIdx = std::rand() % parentIdx.size();
+        randNormal rn{0, parameters["Breeding Variance Scale"] * l2(population[i], population[otherParentIdx])};
+        soln child(parameters["min xi"], parameters["max xi"]);
+        for(int ii=0; ii<DIMENSION; ii++) child.setX(ii, population[i].getX(i) + rn.rand());
+        children.push_back(child);
+    }
+    RESERVECOUT
+        LOG("children produced:\n")
+        for(soln s : children) LOG( '\t' << s << '\n')
+    UNRESERVECOUT
+    return children;
 }
 
 static ProblemCtx<soln> problemCtx = {

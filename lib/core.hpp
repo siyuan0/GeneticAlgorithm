@@ -75,11 +75,9 @@ public:
         return nilreturn;
     }
 
-    std::vector<T> getChildren(int numChildren)
+    std::vector<T> getChildren(std::vector<int> parentIdx)
     {
-        THREADPRINT("\tgetNewPopulation: unimplemented\n")
-        std::vector<T> nilreturn;
-        return nilreturn;
+        return _problemCtx.getChildren(_population, parentIdx, _parameters);
     }
 
     void updatePopulation(std::vector<T> newPopulation)
@@ -106,7 +104,7 @@ public:
 
             // perform GA search
             std::vector<int> parentIdx = getParents(rangeStart, rangeEnd);
-            std::vector<T> children = getChildren(policy->numPopulationReplaced);
+            std::vector<T> children = getChildren(parentIdx);
             updatePopulation(children);
             if(terminateSearch()) break;
         }
