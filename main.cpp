@@ -19,7 +19,7 @@ int main(int argc,
 
         GA<Schwefel::soln> GAinst(Schwefel::problemCtx, jmap);
         GAinst.optimise();
-        GAinst.print();
+        GAinst.printToFile("population.txt");
     }else
     {
         std::cout << "too many arguments\n";

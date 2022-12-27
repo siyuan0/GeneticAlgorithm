@@ -10,6 +10,7 @@
 #include <thread>
 #include "utils.hpp"
 #include <algorithm>
+#include <fstream>
 
 static int unique_id = 0;
 
@@ -67,6 +68,17 @@ public:
     void print()
     {   // print curr population
         for(int i=0; i<_population.size(); i++) std::cout << _population[i] << '\n';
+    }
+
+    void printToFile(const std::string fileName)
+    {   // save the current population to fileName in the format for each line: x1, x2,... xn, f
+        std::ofstream outfile;
+        outfile.open(fileName, std::ios::out|std::ios::trunc);
+        for(T s : _population)
+        {
+            outfile << s << '\n';
+        }
+        outfile.close();
     }
 
     void generateInitialPopulation()

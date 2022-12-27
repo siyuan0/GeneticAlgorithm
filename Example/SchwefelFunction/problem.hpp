@@ -56,10 +56,18 @@ public:
 
     friend std::ostream& operator<< (std::ostream& stream, const soln& s)
     {   // for printing out the contents of a solution
-        stream << "x: [";
         for(int i=0; i<DIMENSION; i++) stream << s.x[i] << ", ";
-        stream << "] f: " << s.f;
+        stream << s.f;
         return stream;
+    }
+
+    std::string print()
+    {
+        std::stringstream ss;
+        ss << "x: [";
+        for(int i=0; i<DIMENSION; i++) ss << x[i] << ", ";
+        ss << "] f: " << f;
+        return ss.str();
     }
 };
 
