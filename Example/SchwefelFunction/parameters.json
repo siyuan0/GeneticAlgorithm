@@ -1,5 +1,5 @@
 {
-    "max_iterations": 10000.0,
+    "max_iterations": 10,
     "population size": 100,
     "max xi": 500,
     "min xi": -500,
@@ -7,5 +7,6 @@
     "initialPopulationReplaced": 30,
     "number of Threads": 3,
     "selection pressure": 10,
-    "Breeding Variance Scale": 0.5
+    "Breeding Variance Scale": 0.5,
+    "check termination every": 10
 }

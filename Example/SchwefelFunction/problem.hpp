@@ -80,7 +80,8 @@ std::vector<soln> getInitialPopulation(int size, std::unordered_map<std::string,
     return v;
 }
 
-std::vector<int> getParentIdx(std::vector<soln>& population, int rangeStart, int rangeEnd, 
+std::pair<std::vector<int>, 
+          std::vector<std::pair<float, int>>> getParentIdx(std::vector<soln>& population, int rangeStart, int rangeEnd, 
                               std::unordered_map<std::string, float>& parameters)
 {  /* parents chosen by ranking selection
       p(selected)=(S*(N+1-2*R_i) + 2*(R_i-1))/(N*(N-1)) 
@@ -107,12 +108,12 @@ std::vector<int> getParentIdx(std::vector<soln>& population, int rangeStart, int
         if(std::rand() < RAND_MAX * acceptCriteria) chosenParents.push_back(sortingArr[i].second);
     }
 
-    RESERVECOUT
-        LOG("chosen parents: \n")
-        for(int i=0; i<chosenParents.size(); i++) LOG( '\t' << population[chosenParents[i]] << '\n')
-    UNRESERVECOUT
+    // RESERVECOUT
+    //     LOG("chosen parents: \n")
+    //     for(int i=0; i<chosenParents.size(); i++) LOG( '\t' << population[chosenParents[i]] << '\n')
+    // UNRESERVECOUT
     
-    return chosenParents;
+    return std::pair<std::vector<int>, std::vector<std::pair<float, int>>>{chosenParents, sortingArr};
 }
 
 std::vector<soln> getChildren(std::vector<soln>& population, std::vector<int>& parentIdx, 
@@ -131,17 +132,35 @@ std::vector<soln> getChildren(std::vector<soln>& population, std::vector<int>& p
         for(int ii=0; ii<DIMENSION; ii++) child.setX(ii, population[i].getX(i) + rn.rand());
         children.push_back(child);
     }
-    RESERVECOUT
-        LOG("children produced:\n")
-        for(soln s : children) LOG( '\t' << s << '\n')
-    UNRESERVECOUT
+    // RESERVECOUT
+    //     LOG("children produced:\n")
+    //     for(soln s : children) LOG( '\t' << s << '\n')
+    // UNRESERVECOUT
     return children;
+}
+
+void updatePopulation(std::vector<soln>& population, std::vector<soln>& children, 
+                      std::vector<std::pair<float, int>> sortedIdx, 
+                      std::unordered_map<std::string, float>& parameters)
+{
+    for(int i=0; i<children.size(); i++)
+    {
+        population[sortedIdx[sortedIdx.size()-i-1].second] = children[i];
+    }
+    THREADPRINT("updated " << children.size() << " solutions in population\n")
+}
+
+bool endSearch(std::vector<soln> localCopyOfPopulation)
+{    // cannot pass by reference since we are allowing threads to modify population freely
+    return false;
 }
 
 static ProblemCtx<soln> problemCtx = {
     .getRandomSolutions = &getInitialPopulation,
     .getParentIdx = &getParentIdx,
-    .getChildren = &getChildren
+    .getChildren = &getChildren,
+    .updatePopulation = &updatePopulation,
+    .endSearch = &endSearch
 };
 
 } // namespace Schwefel

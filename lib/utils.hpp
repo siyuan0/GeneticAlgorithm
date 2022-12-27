@@ -8,7 +8,7 @@
 #include <random>
 
 std::timed_mutex coutGuard; // use for thread-safe cout
-const std::chrono::duration<double, std::milli> default_timeout(1); // default timeout for waiting for cout lock
+const std::chrono::duration<double, std::milli> default_timeout(10); // default timeout for waiting for cout lock
 std::random_device rd{};
 std::mt19937 gen{rd()};
 
