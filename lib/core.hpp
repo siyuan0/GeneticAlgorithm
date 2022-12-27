@@ -22,8 +22,9 @@ int generateThreadID()
 template <typename T>
 struct ProblemCtx
 {   // problem specific methods
-    std::vector<T> (*getRandomSolutions)(int, std::unordered_map<std::string, float>);
-    std::vector<int> (*getParentIdx)(std::vector<T>&, int, int, std::unordered_map<std::string, float>);
+    std::vector<T> (*getRandomSolutions)(int, std::unordered_map<std::string, float>&);
+    std::vector<int> (*getParentIdx)(std::vector<T>&, int, int, std::unordered_map<std::string, float>&);
+    std::vector<T> (*getChildren)(std::vector<T>&, std::vector<int>&, std::unordered_map<std::string, float>&);
 };
 
 struct GA_policy
@@ -74,7 +75,7 @@ public:
         return nilreturn;
     }
 
-    std::vector<T> getNewPopulation(int numNewPopulation)
+    std::vector<T> getChildren(int numChildren)
     {
         THREADPRINT("\tgetNewPopulation: unimplemented\n")
         std::vector<T> nilreturn;
@@ -105,8 +106,8 @@ public:
 
             // perform GA search
             std::vector<int> parentIdx = getParents(rangeStart, rangeEnd);
-            std::vector<T> newPopulation = getNewPopulation(policy->numPopulationReplaced);
-            updatePopulation(newPopulation);
+            std::vector<T> children = getChildren(policy->numPopulationReplaced);
+            updatePopulation(children);
             if(terminateSearch()) break;
         }
         THREADPRINT("thread " << threadID << " ended\n")

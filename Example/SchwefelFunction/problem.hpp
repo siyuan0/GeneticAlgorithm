@@ -52,7 +52,7 @@ public:
     }
 };
 
-std::vector<soln> getInitialPopulation(int size, std::unordered_map<std::string, float> parameters)
+std::vector<soln> getInitialPopulation(int size, std::unordered_map<std::string, float>& parameters)
 {
     std::vector<soln> v;
     for(int i=0; i<size; i++) v.push_back(soln(
@@ -63,7 +63,7 @@ std::vector<soln> getInitialPopulation(int size, std::unordered_map<std::string,
 }
 
 std::vector<int> getParentIdx(std::vector<soln>& population, int rangeStart, int rangeEnd, 
-                              std::unordered_map<std::string, float> parameters)
+                              std::unordered_map<std::string, float>& parameters)
 {  /* parents chosen by ranking selection
       p(selected)=(S*(N+1-2*R_i) + 2*(R_i-1))/(N*(N-1)) 
       where S = selection pressure, N is size of population considered,
@@ -97,9 +97,16 @@ std::vector<int> getParentIdx(std::vector<soln>& population, int rangeStart, int
     return chosenParents;
 }
 
+std::vector<soln> getChildren(std::vector<soln>& population, std::vector<int>& parentIdx, 
+                              std::unordered_map<std::string, float>& parameters)
+{
+
+}
+
 static ProblemCtx<soln> problemCtx = {
     .getRandomSolutions = &getInitialPopulation,
-    .getParentIdx = &getParentIdx
+    .getParentIdx = &getParentIdx,
+    .getChildren = &getChildren
 };
 
 } // namespace Schwefel
