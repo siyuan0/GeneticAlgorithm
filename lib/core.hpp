@@ -109,7 +109,8 @@ public:
 
     void terminateSearchThread()
     {
-        int checkpoint = 10;
+        int checkpoint = 0;
+        int checkpoint_print = 0;
         bool check = false;
         THREADPRINT("thread terminateSearch started\n")
         std::unique_lock locallock{_populationGuard, std::defer_lock};
@@ -136,6 +137,20 @@ public:
                 }
                 locallock.unlock();
                 checkpoint += _parameters["check termination every"];
+            }
+            check = true;
+            for(auto it=_threadProgress.begin(); it!=_threadProgress.end(); it++)
+            {
+                check = check && (it->second > checkpoint_print);
+            }
+            if(check)
+            {
+                locallock.lock();
+                std::stringstream ss;
+                ss << "iter" << checkpoint_print << ".txt";
+                printToFile(ss.str());
+                locallock.unlock();
+                checkpoint_print += _parameters["print every"];
             }
         }
     }
@@ -165,7 +180,6 @@ public:
 
     void optimise()
     {
-        generateInitialPopulation();
         std::vector<std::thread> threadList;
         std::cout << "number of available processors = " << std::thread::hardware_concurrency() << '\n';
         int populationPerThread = _population.size() / _parameters["number of Threads"] + 1;

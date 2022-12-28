@@ -19,12 +19,14 @@ int main(int argc,
         auto jmap = data.get<std::unordered_map<std::string, float>>();
 
         GA<Schwefel::soln> GAinst(Schwefel::problemCtx, jmap);
+        GAinst.generateInitialPopulation();
+        GAinst.printToFile("populationInitial.txt");
         auto start = std::chrono::high_resolution_clock::now();
         GAinst.optimise();
         auto finish = std::chrono::high_resolution_clock::now();
         std::cout << "Optimisation took " << 
                 std::chrono::duration_cast<std::chrono::milliseconds>(finish-start).count() << "ms\n";
-        GAinst.printToFile("population.txt");
+        GAinst.printToFile("populationEnd.txt");
     }else
     {
         std::cout << "too many arguments\n";
