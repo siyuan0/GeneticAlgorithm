@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <unordered_map>
+#include <chrono>
 #include "lib/core.hpp"
 #include "third_party/nlohmann/json.hpp"
 #include "Example/SchwefelFunction/problem.hpp"
@@ -18,7 +19,11 @@ int main(int argc,
         auto jmap = data.get<std::unordered_map<std::string, float>>();
 
         GA<Schwefel::soln> GAinst(Schwefel::problemCtx, jmap);
+        auto start = std::chrono::high_resolution_clock::now();
         GAinst.optimise();
+        auto finish = std::chrono::high_resolution_clock::now();
+        std::cout << "Optimisation took " << 
+                std::chrono::duration_cast<std::chrono::milliseconds>(finish-start).count() << "ms\n";
         GAinst.printToFile("population.txt");
     }else
     {

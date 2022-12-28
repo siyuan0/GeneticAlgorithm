@@ -121,14 +121,12 @@ public:
                 break;
             }
             check = true;
-            // THREADPRINT("progress: " << _threadProgress[1] << '\n')
             for(auto it=_threadProgress.begin(); it!=_threadProgress.end(); it++)
             {
                 check = check && (it->second > checkpoint);
             }
             if(check)
             {
-                THREADPRINT("checking for termination\n")
                 locallock.lock();
                 if(_problemCtx.endSearch(_population))
                 {
