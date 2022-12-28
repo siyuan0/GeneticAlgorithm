@@ -142,7 +142,7 @@ std::vector<soln> getChildren(std::vector<soln>& population, std::vector<int>& p
         for(int ii=0; ii<DIMENSION; ii++)
         {
             float newx = parameters["max xi"] + 1;
-            while((newx > parameters["max xi"]) | (newx < parameters["min xi"])) newx = population[i].getX(i) + rn.rand();
+            while((newx > parameters["max xi"]) | (newx < parameters["min xi"])) newx = population[i].getX(ii) + rn.rand();
             child.setX(ii, newx);
         }
         child.doEval();
@@ -168,7 +168,6 @@ void updatePopulation(std::vector<soln>& population, std::vector<soln>& children
 
 bool endSearch(std::vector<soln> localCopyOfPopulation)
 {    // cannot pass by reference since we are allowing threads to modify population freely
-    THREADPRINT("endSearch: copied population\n")
     return false;
 }
 

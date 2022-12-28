@@ -43,7 +43,7 @@ class GA
 {
 private:
     std::vector<T> _population;
-    std::timed_mutex _populationGuard; // to ensure thread-safe modifications to population
+    std::mutex _populationGuard; // to ensure thread-safe modifications to population
     std::unordered_map<std::string, float> _parameters;
     GA_policy _policy; // tracks current algorithm state
     ProblemCtx<T> _problemCtx;
@@ -101,11 +101,10 @@ public:
 
     void updatePopulation(std::vector<T>& children, std::vector<std::pair<float, int>>& sortedIdx)
     {
-        _populationGuard.try_lock_for(default_timeout);
-        THREADPRINT("updatePopulation: population locked\n")
+        std::unique_lock locallock{_populationGuard, std::defer_lock};
+        locallock.lock();
         _problemCtx.updatePopulation(_population, children, sortedIdx, _parameters);
-        _populationGuard.unlock();
-        THREADPRINT("updatePopulation: population unlocked\n")
+        locallock.unlock();
     }
 
     void terminateSearchThread()
@@ -113,6 +112,7 @@ public:
         int checkpoint = 10;
         bool check = false;
         THREADPRINT("thread terminateSearch started\n")
+        std::unique_lock locallock{_populationGuard, std::defer_lock};
         while(!_terminateFlag)
         {
             if(_threadProgress.empty()){
@@ -129,16 +129,14 @@ public:
             if(check)
             {
                 THREADPRINT("checking for termination\n")
-                _populationGuard.try_lock_for(default_timeout);
+                locallock.lock();
                 if(_problemCtx.endSearch(_population))
                 {
                     _terminateFlag = true;
-                    THREADPRINT("terminate condition reached\n")
-                    _populationGuard.unlock();
+                    locallock.unlock();
                     break;
                 }
-                _populationGuard.unlock();
-                THREADPRINT("terminateSearch: unlocked population\n")
+                locallock.unlock();
                 checkpoint += _parameters["check termination every"];
             }
         }
@@ -155,7 +153,6 @@ public:
         while(_threadProgress[threadID] < maxIter)
         {
             _threadProgress[threadID] += 1;
-            THREADPRINT("thread " << threadID << " on iteration " << _threadProgress[threadID] << '\n')
 
             // perform GA search
             std::pair<std::vector<int>, std::vector<std::pair<float, int>>> parentIdxAndSortedArr = getParents(rangeStart, rangeEnd);
@@ -191,8 +188,7 @@ public:
         threadList.push_back(std::thread(&GA<T>::terminateSearchThread, this)); 
         
         for(int i=0; i<threadList.size(); i++) threadList[i].join(); // wait for all threads to complete
-        std::cout << "all threads completed\n";
-        
+        THREADPRINT("all threads completed\n")
     }
 };
 

@@ -40,7 +40,7 @@ def visualisePopulation(path):
     print(f.reshape(X1.shape).shape)
     cs = plt.contour(X1, X2, f.reshape(X1.shape), 10)
     plt.colorbar(cs, shrink=0.7, aspect=10)
-    plt.scatter(data[:,0], data[:,1])
+    plt.scatter(data[:,0], data[:,1], marker='x', c='r')
     plt.savefig("result.png")
 
 # schwefel2D()
