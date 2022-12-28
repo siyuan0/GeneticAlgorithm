@@ -48,6 +48,8 @@ public:
         f = evaluateObjective();
     }
 
+    void doEval(){ f = evaluateObjective(); }
+
     float getEval(){ return f; }
 
     float getX(int i){ return x[i]; }
@@ -137,7 +139,13 @@ std::vector<soln> getChildren(std::vector<soln>& population, std::vector<int>& p
         while(otherParentIdx == i) otherParentIdx = std::rand() % parentIdx.size();
         randNormal rn{0, parameters["Breeding Variance Scale"] * l2(population[i], population[otherParentIdx])};
         soln child(parameters["min xi"], parameters["max xi"]);
-        for(int ii=0; ii<DIMENSION; ii++) child.setX(ii, population[i].getX(i) + rn.rand());
+        for(int ii=0; ii<DIMENSION; ii++)
+        {
+            float newx = parameters["max xi"] + 1;
+            while((newx > parameters["max xi"]) | (newx < parameters["min xi"])) newx = population[i].getX(i) + rn.rand();
+            child.setX(ii, newx);
+        }
+        child.doEval();
         children.push_back(child);
     }
     // RESERVECOUT
@@ -155,11 +163,12 @@ void updatePopulation(std::vector<soln>& population, std::vector<soln>& children
     {
         population[sortedIdx[sortedIdx.size()-i-1].second] = children[i];
     }
-    THREADPRINT("updated " << children.size() << " solutions in population\n")
+    // THREADPRINT("updated " << children.size() << " solutions in population\n")
 }
 
 bool endSearch(std::vector<soln> localCopyOfPopulation)
 {    // cannot pass by reference since we are allowing threads to modify population freely
+    THREADPRINT("endSearch: copied population\n")
     return false;
 }
 

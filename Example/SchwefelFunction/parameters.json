@@ -1,5 +1,5 @@
 {
-    "max_iterations": 10,
+    "max_iterations": 1000,
     "population size": 100,
     "max xi": 500,
     "min xi": -500,

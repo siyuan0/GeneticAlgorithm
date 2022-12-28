@@ -11,6 +11,7 @@
 #include "utils.hpp"
 #include <algorithm>
 #include <fstream>
+#include <atomic>
 
 static int unique_id = 0;
 
@@ -48,7 +49,7 @@ private:
     ProblemCtx<T> _problemCtx;
     bool _terminateFlag;
     int _numOptimiseThreads;
-    std::unordered_map<int, int> _threadProgress;
+    std::unordered_map<int, std::atomic<int>> _threadProgress;
 
 public:
     GA(ProblemCtx<T> problemCtx,
@@ -83,7 +84,6 @@ public:
 
     void generateInitialPopulation()
     {
-        std::cout << "\tgenerateInitialPopulation: unimplemented\n";
         _population.clear();
         _population = _problemCtx.getRandomSolutions(_parameters["population size"], _parameters);
     }
@@ -102,19 +102,30 @@ public:
     void updatePopulation(std::vector<T>& children, std::vector<std::pair<float, int>>& sortedIdx)
     {
         _populationGuard.try_lock_for(default_timeout);
+        THREADPRINT("updatePopulation: population locked\n")
         _problemCtx.updatePopulation(_population, children, sortedIdx, _parameters);
         _populationGuard.unlock();
+        THREADPRINT("updatePopulation: population unlocked\n")
     }
 
     void terminateSearchThread()
     {
-        int checkpoint = 0;
+        int checkpoint = 10;
         bool check = false;
+        THREADPRINT("thread terminateSearch started\n")
         while(!_terminateFlag)
         {
-            if(_threadProgress.empty()) _terminateFlag=true; break;
+            if(_threadProgress.empty()){
+                THREADPRINT("terminateSearch: no more threads\n")
+                _terminateFlag=true; 
+                break;
+            }
             check = true;
-            for(auto p : _threadProgress) check = check && (p.second > checkpoint);
+            // THREADPRINT("progress: " << _threadProgress[1] << '\n')
+            for(auto it=_threadProgress.begin(); it!=_threadProgress.end(); it++)
+            {
+                check = check && (it->second > checkpoint);
+            }
             if(check)
             {
                 THREADPRINT("checking for termination\n")
@@ -127,6 +138,7 @@ public:
                     break;
                 }
                 _populationGuard.unlock();
+                THREADPRINT("terminateSearch: unlocked population\n")
                 checkpoint += _parameters["check termination every"];
             }
         }
@@ -136,13 +148,14 @@ public:
     {   // perform GA search on a subset of population
         // ie. _population[rangeStart:rangeEnd]
         int threadID = generateThreadID();
+        _threadProgress.emplace(threadID, 0);
         _numOptimiseThreads += 1;
         THREADPRINT("thread " << threadID << " started handling " << rangeEnd-rangeStart << " solutions\n")
-        _threadProgress.insert({threadID, 0});
 
         while(_threadProgress[threadID] < maxIter)
         {
             _threadProgress[threadID] += 1;
+            THREADPRINT("thread " << threadID << " on iteration " << _threadProgress[threadID] << '\n')
 
             // perform GA search
             std::pair<std::vector<int>, std::vector<std::pair<float, int>>> parentIdxAndSortedArr = getParents(rangeStart, rangeEnd);
@@ -175,8 +188,7 @@ public:
                          &_policy)); // starts a thread
         }
         // starts terminate checker thread
-        threadList.push_back(std::thread(
-                        &GA<T>::terminateSearchThread, this)); 
+        threadList.push_back(std::thread(&GA<T>::terminateSearchThread, this)); 
         
         for(int i=0; i<threadList.size(); i++) threadList[i].join(); // wait for all threads to complete
         std::cout << "all threads completed\n";
