@@ -18,7 +18,7 @@
 
 namespace Schwefel
 {
-    static int dimension = 1;
+    static int num_of_evaluations = 0;
 
 class soln : public solution
 {
@@ -30,6 +30,7 @@ private:
 
     float evaluateObjective()
     { // evaluate Schwefel's function on this solution
+        num_of_evaluations += 1;
         float tmp = 0;
         for(int i=0; i<DIMENSION; i++) 
         {
@@ -139,6 +140,7 @@ std::vector<soln> getChildren(std::vector<soln>& population, std::vector<int>& p
         while(otherParentIdx == i) otherParentIdx = std::rand() % parentIdx.size();
         randNormal rn{0, parameters["Breeding Variance Scale"] * l2(population[i], population[otherParentIdx])};
         soln child(parameters["min xi"], parameters["max xi"]);
+        Schwefel::num_of_evaluations -= 1; // there was an extra evaluation done when initialising soln
         for(int ii=0; ii<DIMENSION; ii++)
         {
             float newx = parameters["max xi"] + 1;

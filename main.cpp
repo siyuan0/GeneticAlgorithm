@@ -27,6 +27,7 @@ int main(int argc,
         std::cout << "Optimisation took " << 
                 std::chrono::duration_cast<std::chrono::milliseconds>(finish-start).count() << "ms\n";
         GAinst.printToFile("populationEnd.txt");
+        std::cout << "number of function evaluations: " << Schwefel::num_of_evaluations << '\n';
     }else
     {
         std::cout << "too many arguments\n";

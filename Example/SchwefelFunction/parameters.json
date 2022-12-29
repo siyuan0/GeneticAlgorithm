@@ -5,9 +5,10 @@
     "min xi": -500,
     "initialParentCount": 30,
     "initialPopulationReplaced": 30,
-    "number of Threads": 1,
+    "number of Threads": 4,
     "selection pressure": 10,
     "Breeding Variance Scale": 0.5,
     "check termination every": 10,
-    "print every": 100
+    "print every": 20,
+    "swap population every": 10
 }
