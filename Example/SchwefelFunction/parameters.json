@@ -9,6 +9,6 @@
     "selection pressure": 10,
     "Breeding Variance Scale": 0.5,
     "check termination every": 10,
-    "print every": 20,
+    "print every": 2000,
     "swap population every": 10
 }

@@ -14,11 +14,11 @@
 #include <utility>
 #include <limits>
 
-#define DIMENSION 2 // to change this define for other dimensions
+#define DIMENSION 2 // to change this define for number of dimensions considered
 
 namespace Schwefel
 {
-    static int num_of_evaluations = 0;
+    static int num_of_evaluations = 0; // track the total number of evaluations of Schwefel's function
 
 class soln : public solution
 {
@@ -29,7 +29,7 @@ private:
     float _ubound;
 
     float evaluateObjective()
-    { // evaluate Schwefel's function on this solution
+    {   // evaluate Schwefel's function on this solution
         num_of_evaluations += 1;
         float tmp = 0;
         for(int i=0; i<DIMENSION; i++) 
@@ -42,7 +42,7 @@ private:
 
 public:
     soln(float lowerbound, float upperbound)
-    {  // randomly generate a solution within the provided bounds
+    {  // randomly generate a soln within the provided constraints
         _lbound = lowerbound;
         _ubound = upperbound;
         for(int i=0; i<DIMENSION; i++) x[i] = lowerbound +  float(std::rand()) / RAND_MAX * (upperbound-lowerbound);
@@ -65,11 +65,11 @@ public:
     }
 
     std::string print()
-    {
+    {   // same goal as operator<<, but slightly more formatted
         std::stringstream ss;
         ss << "x: [";
-        for(int i=0; i<DIMENSION; i++) ss << x[i] << ", ";
-        ss << "] f: " << f;
+        for(int i=0; i<DIMENSION-1; i++) ss << x[i] << ", ";
+        ss << x[DIMENSION-1] << "] f: " << f;
         return ss.str();
     }
 };
@@ -81,8 +81,18 @@ float l2(soln& s1, soln& s2)
     return std::pow(sum, 0.5);
 }
 
+soln getBestSoln(std::vector<soln>& population)
+{   // return the best soln in the population
+    int idx_best = 0;
+    for(int i=0; i<population.size(); i++)
+    {
+        if(population[i].getEval() < population[idx_best].getEval()) idx_best = i;
+    }
+    return population[idx_best];
+}
+
 std::vector<soln> getInitialPopulation(int size, std::unordered_map<std::string, float>& parameters)
-{
+{   // randomly initialise initial population
     std::vector<soln> v;
     for(int i=0; i<size; i++) v.push_back(soln(
         parameters["min xi"],
@@ -119,11 +129,6 @@ std::pair<std::vector<int>,
         if(std::rand() < RAND_MAX * acceptCriteria) chosenParents.push_back(sortingArr[i].second);
     }
 
-    // RESERVECOUT
-    //     LOG("chosen parents: \n")
-    //     for(int i=0; i<chosenParents.size(); i++) LOG( '\t' << population[chosenParents[i]] << '\n')
-    // UNRESERVECOUT
-    
     return std::pair<std::vector<int>, std::vector<std::pair<float, int>>>{chosenParents, sortingArr};
 }
 
@@ -136,13 +141,17 @@ std::vector<soln> getChildren(std::vector<soln>& population, std::vector<int>& p
 
     for(int i=0; i<parentIdx.size(); i++)
     {
+        // randomly choose the other parent from the parent candidates
         int otherParentIdx = i;
         while(otherParentIdx == i) otherParentIdx = std::rand() % parentIdx.size();
+
+        // sample from Normal Dist for new children soln
         randNormal rn{0, parameters["Breeding Variance Scale"] * l2(population[i], population[otherParentIdx])};
         soln child(parameters["min xi"], parameters["max xi"]);
         Schwefel::num_of_evaluations -= 1; // there was an extra evaluation done when initialising soln
         for(int ii=0; ii<DIMENSION; ii++)
         {
+            // repeat until drawn xi does not violate problem constraints
             float newx = parameters["max xi"] + 1;
             while((newx > parameters["max xi"]) | (newx < parameters["min xi"])) newx = population[i].getX(ii) + rn.rand();
             child.setX(ii, newx);
@@ -150,29 +159,29 @@ std::vector<soln> getChildren(std::vector<soln>& population, std::vector<int>& p
         child.doEval();
         children.push_back(child);
     }
-    // RESERVECOUT
-    //     LOG("children produced:\n")
-    //     for(soln s : children) LOG( '\t' << s << '\n')
-    // UNRESERVECOUT
+    
     return children;
 }
 
 void updatePopulation(std::vector<soln>& population, std::vector<soln>& children, 
                       std::vector<std::pair<float, int>> sortedIdx, 
                       std::unordered_map<std::string, float>& parameters)
-{
+{   // update the current population by replacing the worst soln with new child soln
     for(int i=0; i<children.size(); i++)
     {
         population[sortedIdx[sortedIdx.size()-i-1].second] = children[i];
     }
-    // THREADPRINT("updated " << children.size() << " solutions in population\n")
 }
 
 bool endSearch(std::vector<soln> localCopyOfPopulation)
-{    // cannot pass by reference since we are allowing threads to modify population freely
+{   // cannot pass by reference since we are allowing threads to modify population freely
+
+    // we are not implementing any end condition for now, so we return false so that search
+    // continues until max_iteration is reached
     return false;
 }
 
+// store the problem specific methods for the GA core to run on
 static ProblemCtx<soln> problemCtx = {
     .getRandomSolutions = &getInitialPopulation,
     .getParentIdx = &getParentIdx,

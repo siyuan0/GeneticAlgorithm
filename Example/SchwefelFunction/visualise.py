@@ -48,7 +48,7 @@ def bestSoln(path):
 
 # schwefel2D()
 visualisePopulation("Release/populationInitial.txt", "2d_initial.png")
-for i in [20, 40, 80, 100, 220]:
+for i in [20, 40, 80, 60, 100, 220]:
     datapath = "Release/Results/iter" + str(i) + ".txt"
     outpath = "2d_iter" + str(i) + ".png"
     visualisePopulation(datapath, outpath)
