@@ -47,11 +47,18 @@ def bestSoln(path):
     print(data[np.argmin(data[:,2])])
 
 # schwefel2D()
-visualisePopulation("Release/populationInitial.txt", "2d_initial.png")
-for i in [20, 40, 80, 60, 100, 220]:
-    datapath = "Release/Results/iter" + str(i) + ".txt"
-    outpath = "2d_iter" + str(i) + ".png"
-    visualisePopulation(datapath, outpath)
-visualisePopulation("Release/populationEnd.txt", "2d_End.png")
+# visualisePopulation("Release/populationInitial.txt", "2d_initial.png")
+# for i in [20, 40, 60, 80, 100]:
+#     datapath = "Release/Results/iter" + str(i) + ".txt"
+#     outpath = "2d_iter" + str(i) + ".png"
+#     visualisePopulation(datapath, outpath)
+# visualisePopulation("Release/populationEnd.txt", "2d_End.png")
+# bestSoln("Release/populationEnd.txt")
 
-bestSoln("Release/populationEnd.txt")
+# runtime 2d (data recorded here)
+thread_count = [1, 2, 3, 4, 5, 6]
+runtime = [111.8, 55.8, 37.9, 31.6, 29.2, 27.8]
+plt.plot(thread_count, runtime)
+plt.xlabel("number of concurrent threads")
+plt.ylabel("runtime (ms)")
+plt.savefig("runtime.png")

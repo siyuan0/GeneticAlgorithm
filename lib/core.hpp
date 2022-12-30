@@ -14,6 +14,7 @@
 #include <atomic>
 #include <chrono>
 #include <shared_mutex>
+#include <filesystem>
 
 static int unique_id = 0;
 
@@ -27,6 +28,7 @@ int generateThreadID()
 template <typename T>
 struct ProblemCtx
 {   
+    void (*setRandomGenerator)(std::mt19937);
     std::vector<T> (*getRandomSolutions)(int, std::unordered_map<std::string, float>&);
     std::pair<std::vector<int>, std::vector<std::pair<float, int>>> 
         (*getParentIdx)(std::vector<T>&, int, int, std::unordered_map<std::string, float>&);
@@ -44,16 +46,13 @@ class GA
 {
 private:
     std::vector<T> _population;
+    std::vector<T> _sharedPool;
     std::unordered_map<std::string, float> _parameters;
     GA_policy _policy; // tracks current algorithm state
     ProblemCtx<T> _problemCtx;
-    bool _terminateFlag;
-    int _numOptimiseThreads;
     std::shared_timed_mutex _populationGuard; // to ensure thread-safe modifications to population
-    std::shared_timed_mutex _allThreadGuard; // to pause all threads (general purpose)
-    std::shared_timed_mutex _printGuard; // to pause threads for printing
-    std::unique_lock<std::shared_timed_mutex> _printLock{_printGuard, std::defer_lock};
-    std::unordered_map<int, std::atomic<int>> _threadProgress;
+    std::shared_timed_mutex _sharedPoolGaurd; // to ensure thread-safe mod to _sharedPool
+    std::vector<std::vector<T>> _printerQueue;
 
 public:
     GA(ProblemCtx<T> problemCtx,
@@ -63,8 +62,6 @@ public:
         _problemCtx = problemCtx;
         _parameters = parameters;
         _policy = {};
-        _terminateFlag = false;
-        _numOptimiseThreads = 0;
     };
 
     void print()
@@ -72,15 +69,44 @@ public:
         for(int i=0; i<_population.size(); i++) std::cout << _population[i] << '\n';
     }
 
-    void printToFile(const std::string fileName)
+    void printToFile(const std::vector<T>& population, const std::string fileName)
     {   // save the current population to fileName in the format for each line: x1, x2,... xn, f
         std::ofstream outfile;
         outfile.open(fileName, std::ios::out|std::ios::trunc);
-        for(T s : _population)
+        for(T s : population)
         {
             outfile << s << '\n';
         }
         outfile.close();
+    }
+
+    void printToFile(const std::string fileName)
+    {   // save the current population to fileName in the format for each line: x1, x2,... xn, f
+        printToFile(_population, fileName);
+    }
+
+    void sendToPrinterQueue(std::vector<T>& localPopulation, int rangeStart, int rangeEnd, int printIdx)
+    {   // updates the _printQueue with this thread's localPopulation
+        if((printIdx > _printerQueue.size()-1) | _printerQueue.empty())
+        {
+            _printerQueue.push_back(std::vector<T>(_population.size()));
+        }
+        int localCounter = 0;
+        for(int i=rangeStart; i<rangeEnd; i++)
+        {
+            _printerQueue[printIdx][i] = localPopulation[localCounter];
+            localCounter += 1;
+        }
+    }
+
+    void clearPrinterQueue()
+    {   // print everything in _printerQueue
+        for(int i=0; i<_printerQueue.size(); i++)
+        {
+            std::stringstream ss;
+            ss << "Results/iter" << (i+1)*_parameters["print every"] << ".txt";
+            printToFile(_printerQueue[i], ss.str());
+        }
     }
 
     std::vector<T>* getPopulation()
@@ -94,15 +120,22 @@ public:
         _population = _problemCtx.getRandomSolutions(_parameters["population size"], _parameters);
     }
 
-    std::pair<std::vector<int>, std::vector<std::pair<float, int>>>  getParents(int rangeStart, int rangeEnd)
+    std::pair<std::vector<int>, std::vector<std::pair<float, int>>>  getParents(
+        std::vector<T>& population,
+        ProblemCtx<T>& problemCtx, 
+        std::unordered_map<std::string, float>& parameters)
     {   // use the problem specific population parent selection method
-        auto idxAndSortedArr  = _problemCtx.getParentIdx(_population, rangeStart, rangeEnd, _parameters);
+        auto idxAndSortedArr  = problemCtx.getParentIdx(population, 0, population.size(), parameters);
         return idxAndSortedArr;
     }
 
-    std::vector<T> getChildren(std::vector<int>& parentIdx)
+    std::vector<T> getChildren(
+        std::vector<int>& parentIdx, 
+        std::vector<T>& population, 
+        ProblemCtx<T>& ProblemCtx,
+        std::unordered_map<std::string, float>& parameters)
     {   // use the problem specific breeding+mutation method
-        return _problemCtx.getChildren(_population, parentIdx, _parameters);
+        return ProblemCtx.getChildren(population, parentIdx, parameters);
     }
 
     void updatePopulation(std::vector<T>& children, std::vector<std::pair<float, int>>& sortedIdx)
@@ -113,139 +146,99 @@ public:
         locallock.unlock();
     }
 
-    void printThread() // perform printing to file
-    {
-        std::unique_lock populock{_populationGuard, std::defer_lock};
-        std::unique_lock printlock{_printGuard, std::defer_lock};
-        int checkpoint_print = _parameters["print every"];
-        THREADPRINT("started printer thread\n")
-        
-        while(_threadProgress.empty())
-        {   // wait for other threads to start
-            /* since _threadProgress isn't protected by a mutex, we take advantage of the 
-               the iostream mutex in THREADPRINT to introduce some mutex waiting in
-               this while loop, so that we don't inspect _threadProgress while another thread
-               is still modifying _threadProgress, which causes a bug where the printerThread 
-               is stuck here indefinitely */
-            THREADPRINT("")
-        } 
-
-        while(!_terminateFlag)
-        {
-            if(_threadProgress.empty() | (checkpoint_print > _parameters["max_iterations"])) break;
-            for(auto it=_threadProgress.begin(); it!=_threadProgress.end(); it++)
-            {
-                int showidx = it->second;
-                if(showidx >= checkpoint_print)
-                {
-                    populock.lock();
-                    std::stringstream ss;
-                    ss << "Results/iter" << _threadProgress.begin()->second << ".txt";
-                    printToFile(ss.str());
-                    populock.unlock();
-                    checkpoint_print += _parameters["print every"];        
-                }
-                break;
-            }
-        }
-        THREADPRINT("printer thread: ended\n")
+    void updateLocalPopulation(
+        std::vector<T>& population, 
+        std::vector<T>& children, 
+        std::vector<std::pair<float, int>>& sortedIdx,
+        ProblemCtx<T>& ProblemCtx,
+        std::unordered_map<std::string, float>& parameters)
+    {   // use the problem specific population update method
+        ProblemCtx.updatePopulation(population, children, sortedIdx, parameters);
     }
 
-    void watcherThread()
-    {   // thread that performs concurrent tasks alongside the optimisation threads
-        int checkpoint_terminate = 0;
-        int checkpoint_swapPopulation = 0;
-        bool check;
-        THREADPRINT("thread terminateSearch started\n")
-        std::unique_lock populock{_populationGuard, std::defer_lock};
-        std::unique_lock allThreadLock{_allThreadGuard, std::defer_lock};
-        while(!_terminateFlag)
-        {
-            if(_threadProgress.empty()){ // we can end all threads now
-                _terminateFlag=true; 
-                THREADPRINT("watcherThread: no more threads\n")
-                break;
-            }
-
-            // perform terminateSearch
-            check = true;
-            for(auto it=_threadProgress.begin(); it!=_threadProgress.end(); it++) check = check && (it->second > checkpoint_terminate);
-            if(check)
-            {
-                populock.lock();
-                if(_problemCtx.endSearch(_population))
-                {
-                    _terminateFlag = true;
-                    populock.unlock();
-                    break;
-                }
-                populock.unlock();
-                checkpoint_terminate += _parameters["check termination every"];
-            }
-
-            // perform population swapping
-            if(_parameters["number of Threads"] > 1)
-            {
-                check = true;
-                for(auto it=_threadProgress.begin(); it!=_threadProgress.end(); it++) check = check && (it->second > checkpoint_swapPopulation);
-                if(check)
-                {
-                    allThreadLock.lock();
-                    int idx1 = std::rand() % _population.size();
-                    int idx2 = idx1 + 1;
-                    // randomise idx2 until it is likely in a different subpopulation
-                    // it is not definite because there is a corner case of threadcount=2 and idx1=populationsize/2 that fails without more 
-                    // logic to catch that
-                    while(std::abs(idx1 - idx2) < (_population.size() / _parameters["number of Threads"] - 1)) idx2 = std::rand() % _population.size();
-                    // swap the two members of the population
-                    T tmp = _population[idx1];
-                    _population[idx1] = _population[idx2];
-                    _population[idx2] = tmp;
-                    allThreadLock.unlock();
-                    checkpoint_swapPopulation += _parameters["swap population every"];
-                }
-            }
-        }
-    }
-
-    void optimiseThread(int maxIter, int rangeStart, int rangeEnd, GA_policy* policy)
+    void optimiseThread(int maxIter, int rangeStart, int rangeEnd)
     {   // perform GA search on a subset of population
         // ie. _population[rangeStart:rangeEnd]
         int threadID = generateThreadID();
-        _threadProgress.emplace(threadID, 0);
-        _numOptimiseThreads += 1;
-        std::shared_lock<std::shared_timed_mutex> threadlock(_allThreadGuard, std::defer_lock);
-        THREADPRINT("thread " << threadID << " started handling " << rangeEnd-rangeStart << " solutions\n")
+        int progressCounter = 0;
+        int printIdx = 0;
 
-        while(_threadProgress[threadID] < maxIter)
+        // create a copy of managed population locally managed by this thread
+        std::vector<T> localPopulation;
+        for(int i=rangeStart; i<rangeEnd; i++) localPopulation.push_back(_population[i]);
+
+        // create a copy of resources for this thread
+        auto parameters = _parameters;
+        auto problemCtx = _problemCtx;
+        std::mt19937 randomGenerator;
+        randomGenerator.seed(std::time(NULL));
+        problemCtx.setRandomGenerator(randomGenerator);
+
+        std::unique_lock<std::shared_timed_mutex> sharedPoolLock{_sharedPoolGaurd, std::defer_lock};
+        std::shared_lock<std::shared_timed_mutex> popuLock{_populationGuard, std::defer_lock};
+        auto start = std::chrono::high_resolution_clock::now();
+        THREADPRINT("--thread " << threadID << " started handling " << rangeEnd-rangeStart << " solutions\n")
+
+        while(progressCounter < maxIter)
         {
-            _threadProgress[threadID] += 1;
-            threadlock.lock();
+            progressCounter += 1;
 
             // perform GA search
-            std::pair<std::vector<int>, std::vector<std::pair<float, int>>> parentIdxAndSortedArr = getParents(rangeStart, rangeEnd);
-            std::vector<T> children = getChildren(parentIdxAndSortedArr.first);
-            updatePopulation(children, parentIdxAndSortedArr.second);
+            std::pair<std::vector<int>, std::vector<std::pair<float, int>>> 
+                parentIdxAndSortedArr = getParents(localPopulation, problemCtx, parameters);
+            std::vector<T> children = getChildren(parentIdxAndSortedArr.first, localPopulation, problemCtx, parameters);
+            updateLocalPopulation(localPopulation, children, parentIdxAndSortedArr.second, problemCtx, parameters);
 
-            threadlock.unlock();
-            if(_terminateFlag) break;
+            // send candidates to sharedPool for inter-thread swapping
+            if(progressCounter % static_cast<int>(parameters["swap population every"]) == 0)
+            {
+                int outgoing = intRand(0, localPopulation.size()-1, randomGenerator);
+                sharedPoolLock.lock();
+                if(_sharedPool.empty())
+                {
+                    _sharedPool.push_back(localPopulation[outgoing]);
+                }else
+                {
+                    int incoming = intRand(0, _sharedPool.size()-1, randomGenerator);
+                    auto tmp = localPopulation[outgoing];
+                    localPopulation[outgoing] = _sharedPool[incoming];
+                    _sharedPool[incoming] = tmp;
+                }
+                sharedPoolLock.unlock();
+            }
+
+            // printing
+            if(progressCounter % static_cast<int>(parameters["print every"]) == 0)
+            {
+                sendToPrinterQueue(localPopulation, rangeStart, rangeEnd, printIdx);
+                printIdx += 1;
+            }
         }
-        THREADPRINT("thread " << threadID << " ended after " << _threadProgress[threadID] << " iterations\n")
-        _threadProgress.erase(threadID);
-        _numOptimiseThreads -= 1;
-        if(threadlock) threadlock.unlock();
+        auto finish = std::chrono::high_resolution_clock::now();
+        THREADPRINT("--thread " << threadID << " ended after " << progressCounter << " iterations, taking "
+                    << std::chrono::duration_cast<std::chrono::milliseconds>(finish-start).count() << "ms\n")
+
+        // update the copy of population shared across threads
+        popuLock.lock();
+        int localCounter=0;
+        for(int i=rangeStart; i<rangeEnd; i++)
+        {
+            _population[i] = localPopulation[localCounter];
+            localCounter++;
+        }
+        popuLock.unlock();
+
+        // unlock all locks in case any are still locked
+        if(popuLock) popuLock.unlock();
+        if(sharedPoolLock) sharedPoolLock.unlock();
     }
 
     void optimise()
     {
         // initialise the multi-threading environment
         std::vector<std::thread> threadList;
-        std::cout << "number of available processors = " << std::thread::hardware_concurrency() << '\n';
+        std::cout << "--number of available processors = " << std::thread::hardware_concurrency() << '\n';
         int populationPerThread = _population.size() / _parameters["number of Threads"] + 1;
-        _terminateFlag = false;
-
-        // starts printer thread 
-        threadList.push_back(std::thread(&GA<T>::printThread, this));
 
         // create the optimisation threads
         for(int i=0; i<_parameters["number of Threads"]; i++)
@@ -255,14 +248,13 @@ public:
                         this,
                          _parameters["max_iterations"], 
                          i * populationPerThread, 
-                         std::min<int>((i+1) * populationPerThread, _population.size()), 
-                         &_policy)); // starts a thread
+                         std::min<int>((i+1) * populationPerThread, _population.size()))); // starts a thread
         }
-        // starts terminate checker thread
-        threadList.push_back(std::thread(&GA<T>::watcherThread, this));
         
         for(int i=0; i<threadList.size(); i++) threadList[i].join(); // wait for all threads to complete
-        THREADPRINT("all threads completed\n")
+        THREADPRINT("--all threads completed, printing results...\n")
+        clearPrinterQueue();
+        THREADPRINT("--intermediate results saved to " << std::filesystem::current_path().string() << "/Results/\n")
     }
 };
 

@@ -42,10 +42,15 @@ struct randNormal
         _dist = std::normal_distribution<>{mean, stddev};
     }
 
-    float rand()
+    float rand(std::mt19937& generator)
     {
-       return  _dist(gen);
+       return  _dist(generator);
     }
 };
+
+int intRand(const int & min, const int & max, std::mt19937& generator) {
+    std::uniform_int_distribution<int> distribution(min,max);
+    return distribution(generator);
+}
 
 #endif // INCLUDE_UTILS
