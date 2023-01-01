@@ -14,7 +14,7 @@
 #include <utility>
 #include <limits>
 
-#define DIMENSION 2 // to change this define for number of dimensions considered
+#define DIMENSION 6 // to change this define for number of dimensions considered
 
 namespace Schwefel
 {
@@ -187,10 +187,9 @@ void updatePopulation(std::vector<soln>& population, std::vector<soln>& children
     }
 }
 
-bool endSearch(std::vector<soln> localCopyOfPopulation)
-{   // cannot pass by reference since we are allowing threads to modify population freely
-    // note: we are not implementing any end condition for now
-    return false;
+bool endSearch(std::unordered_map<std::string, float>& parameters)
+{   // end when computational budget is exceeded
+    return Schwefel::num_of_evaluations > parameters["max_eval"];
 }
 
 // store the problem specific methods for the GA core to run on

@@ -34,7 +34,7 @@ struct ProblemCtx
         (*getParentIdx)(std::vector<T>&, int, int, std::unordered_map<std::string, float>&);
     std::vector<T> (*getChildren)(std::vector<T>&, std::vector<int>&, std::unordered_map<std::string, float>&);
     void (*updatePopulation)(std::vector<T>&, std::vector<T>&, std::vector<std::pair<float, int>>, std::unordered_map<std::string, float>&);
-    bool (*endSearch)(std::vector<T>);
+    bool (*endSearch)(std::unordered_map<std::string, float>&);
 };
 
 // a struct to allow change of GA runtime hyperparameters
@@ -179,7 +179,7 @@ public:
         auto start = std::chrono::high_resolution_clock::now();
         THREADPRINT("--thread " << threadID << " started handling " << rangeEnd-rangeStart << " solutions\n")
 
-        while(progressCounter < maxIter)
+        while((progressCounter < maxIter) && !problemCtx.endSearch(parameters))
         {
             progressCounter += 1;
 
@@ -238,7 +238,7 @@ public:
         // initialise the multi-threading environment
         std::vector<std::thread> threadList;
         std::cout << "--number of available processors = " << std::thread::hardware_concurrency() << '\n';
-        int populationPerThread = _population.size() / _parameters["number of Threads"] + 1;
+        int populationPerThread = _population.size() / _parameters["number of Threads"] - 1;
 
         // create the optimisation threads
         for(int i=0; i<_parameters["number of Threads"]; i++)

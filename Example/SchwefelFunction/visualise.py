@@ -58,7 +58,14 @@ def bestSoln(path):
 # runtime 2d (data recorded here)
 thread_count = [1, 2, 3, 4, 5, 6]
 runtime = [111.8, 55.8, 37.9, 31.6, 29.2, 27.8]
-plt.plot(thread_count, runtime)
-plt.xlabel("number of concurrent threads")
-plt.ylabel("runtime (ms)")
+prob_success = [0.63, 0.67, 0.85, 0.92, 0.93, 0.97]
+fig, ax1 = plt.subplots()
+ax2 = ax1.twinx()
+ax1.plot(thread_count, runtime, color="red", label="runtime")
+ax1.set_xlabel("number of concurrent threads")
+ax1.set_ylabel("runtime (ms)")
+ax2.plot(thread_count, prob_success, color="blue", label="probability")
+ax2.set_ylabel("probability of success optimization")
+ax1.legend()
+ax2.legend()
 plt.savefig("runtime.png")

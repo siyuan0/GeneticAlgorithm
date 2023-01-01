@@ -1,11 +1,12 @@
 {
-    "max_iterations": 1000,
-    "population size": 1000,
+    "max_iterations": 5000,
+    "max_eval": 15000,
+    "population size": 100,
     "max xi": 500,
     "min xi": -500,
     "number of Threads": 6,
-    "selection pressure": 10,
+    "selection pressure": 1,
     "Breeding Variance Scale": 0.5,
-    "print every": 2000,
+    "print every": 2000000,
     "swap population every": 10
 }
