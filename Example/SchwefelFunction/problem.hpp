@@ -46,7 +46,8 @@ public:
     {  // randomly generate a soln within the provided constraints
         _lbound = lowerbound;
         _ubound = upperbound;
-        for(int i=0; i<DIMENSION; i++) x[i] = lowerbound +  float(std::rand()) / RAND_MAX * (upperbound-lowerbound);
+        std::uniform_real_distribution<float> urand{lowerbound, upperbound};
+        for(int i=0; i<DIMENSION; i++) x[i] = urand(Schwefel::randomGen);
         f = evaluateObjective();
     }
 
