@@ -9,9 +9,8 @@
 
 std::timed_mutex coutGuard; // use for thread-safe cout
 const std::chrono::duration<double, std::milli> default_timeout(10); // default timeout for waiting for cout lock
-std::random_device rd{};
-std::mt19937 gen{rd()};
 
+// convenience macros
 #define CONCAT2(a, b) a ## b
 
 #define CONCAT(a, b) CONCAT2(a, b)
@@ -29,25 +28,7 @@ std::mt19937 gen{rd()};
 
 #define UNRESERVECOUT coutGuard.unlock();
 
-struct randNormal
-{
-    float _mean;
-    float _stddev;
-    std::normal_distribution<> _dist;
-
-    randNormal(float mean, float stddev)
-    {
-        _mean = mean;
-        _stddev = stddev;
-        _dist = std::normal_distribution<>{mean, stddev};
-    }
-
-    float rand(std::mt19937& generator)
-    {
-       return  _dist(generator);
-    }
-};
-
+// get a random integer within given bounds
 int intRand(const int & min, const int & max, std::mt19937& generator) {
     std::uniform_int_distribution<int> distribution(min,max);
     return distribution(generator);

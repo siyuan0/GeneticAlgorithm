@@ -19,7 +19,9 @@
 namespace Schwefel
 {
     static int num_of_evaluations = 0; // track the total number of evaluations of Schwefel's function
-    static thread_local std::mt19937 randomGen;
+
+    static thread_local std::mt19937 randomGen; // a copy is created for each thread, so that we don't share
+                                                // the random generator which slows thread execution
 
 class soln : public solution
 {
@@ -91,7 +93,8 @@ float l2(soln& s1, soln& s2)
     return std::pow(sum, 0.5);
 }
 
-void setThreadRandomGenerator(std::mt19937 gen){randomGen = gen;}
+// set the random gen for this thread
+void setThreadRandomGenerator(std::mt19937 gen){randomGen = gen;} 
 
 soln getBestSoln(std::vector<soln>& population)
 {   // return the best soln in the population
@@ -158,7 +161,7 @@ std::vector<soln> getChildren(std::vector<soln>& population, std::vector<int>& p
         while(otherParentIdx == i) otherParentIdx = intRand(0, parentIdx.size(), randomGen);
 
         // sample from Normal Dist for new children soln
-        randNormal rn{0, parameters["Breeding Variance Scale"] * l2(population[i], population[otherParentIdx])};
+        std::normal_distribution<float> rn{0, parameters["Breeding Variance Scale"] * l2(population[i], population[otherParentIdx])};
         soln child(parameters["min xi"], parameters["max xi"]);
         Schwefel::num_of_evaluations -= 1; // there was an extra evaluation done when initialising soln
         for(int ii=0; ii<DIMENSION; ii++)
@@ -167,7 +170,7 @@ std::vector<soln> getChildren(std::vector<soln>& population, std::vector<int>& p
             float newx = parameters["max xi"] + 1;
             while((newx > parameters["max xi"]) | (newx < parameters["min xi"]))
             {
-                newx = population[i].getX(ii) + rn.rand(randomGen);
+                newx = population[i].getX(ii) + rn(randomGen);
             }
             child.setX(ii, newx);
         }

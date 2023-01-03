@@ -8,6 +8,8 @@ line 17 in `Example/SchwefelFunction/problem.hpp` to the DIMENSION desired. If t
 will need to be rebuilt following the instructions below. This design is because the `soln` class uses
 c-style array instead of STL containers for faster execution (eg. avoid the slower heap access in std::vector)
 
+This repo uses nlohmann's josn reader (https://github.com/nlohmann/json)
+
 ## Debug build
 For debug build, run 
 

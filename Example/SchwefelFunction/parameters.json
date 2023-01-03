@@ -1,6 +1,6 @@
 {
     "max_iterations": 5000,
-    "max_eval": 60000,
+    "max_eval": 15000,
     "population size": 100,
     "max xi": 500,
     "min xi": -500,

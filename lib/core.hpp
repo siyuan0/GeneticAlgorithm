@@ -19,7 +19,7 @@
 static int unique_id = 0;
 
 int generateThreadID()
-{
+{   // generate a new unique id each time this method is called
     unique_id += 1;
     return unique_id;
 }
@@ -45,8 +45,8 @@ template <typename T>
 class GA
 {
 private:
-    std::vector<T> _population;
-    std::vector<T> _sharedPool;
+    std::vector<T> _population; 
+    std::vector<T> _sharedPool; // a pool of solutions to be exchanged between subsets of population
     std::unordered_map<std::string, float> _parameters;
     GA_policy _policy; // tracks current algorithm state
     ProblemCtx<T> _problemCtx;
@@ -174,11 +174,13 @@ public:
         randomGenerator.seed(std::time(NULL));
         problemCtx.setRandomGenerator(randomGenerator);
 
+        // create the required mutex locks for thread-safe usage of shared resources
         std::unique_lock<std::shared_timed_mutex> sharedPoolLock{_sharedPoolGaurd, std::defer_lock};
         std::shared_lock<std::shared_timed_mutex> popuLock{_populationGuard, std::defer_lock};
+
+        // begin optimisation
         auto start = std::chrono::high_resolution_clock::now();
         THREADPRINT("--thread " << threadID << " started handling " << rangeEnd-rangeStart << " solutions\n")
-
         while((progressCounter < maxIter) && !problemCtx.endSearch(parameters))
         {
             progressCounter += 1;
@@ -207,7 +209,7 @@ public:
                 sharedPoolLock.unlock();
             }
 
-            // printing
+            // printing if needed
             if(progressCounter % static_cast<int>(parameters["print every"]) == 0)
             {
                 sendToPrinterQueue(localPopulation, rangeStart, rangeEnd, printIdx);
@@ -253,7 +255,7 @@ public:
         
         for(int i=0; i<threadList.size(); i++) threadList[i].join(); // wait for all threads to complete
         THREADPRINT("--all threads completed, printing results...\n")
-        clearPrinterQueue();
+        clearPrinterQueue(); // print all the data in queue
         THREADPRINT("--intermediate results saved to " << std::filesystem::current_path().string() << "/Results/\n")
     }
 };
