@@ -18,12 +18,12 @@ failed_runs = 0
 
 bins = np.linspace(-2600, -1500, 100)
 parameter_paths = [
-    ["S=1", "Example/SchwefelFunction/parameters1.json"],
-    ["S=2", "Example/SchwefelFunction/parameters2.json"],
-    ["S=5", "Example/SchwefelFunction/parameters3.json"],
-    ["S=10", "Example/SchwefelFunction/parameters4.json"],
-    ["S=20", "Example/SchwefelFunction/parameters5.json"],
-    ["S=50", "Example/SchwefelFunction/parameters6.json"],
+    ["budget=1,000", "Example/SchwefelFunction/parameters1.json"],
+    ["budget=5,000", "Example/SchwefelFunction/parameters2.json"],
+    ["budget=15,000", "Example/SchwefelFunction/parameters3.json"],
+    ["budget=30,000", "Example/SchwefelFunction/parameters4.json"],
+    ["budget=60,000", "Example/SchwefelFunction/parameters5.json"],
+    ["budget=100,000", "Example/SchwefelFunction/parameters6.json"],
 ]
 
 for desc, parameter_path in parameter_paths:
@@ -44,7 +44,7 @@ for desc, parameter_path in parameter_paths:
             # if f < f_true:
             #     f_true = f
             #     x_true = x
-            # find probability of success
+            #  # find probability of success
             # l2 = 0
             # for i in range(DIMENSIONS): l2 += (x[i]-x_true[i])**2
             # if(l2**(0.5) < l2_limit): numSuccess += 1

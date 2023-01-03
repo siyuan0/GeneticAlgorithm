@@ -20,13 +20,14 @@ int main(int argc,
 
         GA<Schwefel::soln> GAinst(Schwefel::problemCtx, jmap);
         GAinst.generateInitialPopulation();
-        GAinst.printToFile("populationInitial.txt");
+        if(jmap["print results"]) GAinst.printToFile("populationInitial.txt");
         auto start = std::chrono::high_resolution_clock::now();
         GAinst.optimise();
         auto finish = std::chrono::high_resolution_clock::now();
         std::cout << "Optimisation took " << 
                 std::chrono::duration_cast<std::chrono::milliseconds>(finish-start).count() << "ms\n";
-        GAinst.printToFile("populationEnd.txt");
+        if(jmap["print results"]) GAinst.printToFile("populationEnd.txt");
+        if(jmap["print results"]) std::cout << "results printed to populationInitial.txt and populationEnd.txt\n";
         std::cout << "number of function evaluations: " << Schwefel::num_of_evaluations << '\n';
         std::cout << "best solution: " << Schwefel::getBestSoln(*(GAinst.getPopulation())).print() << '\n';
     }else
